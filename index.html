@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MusAudio</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <base href="./">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="./img/favicon/favicon-16x16.png">
+  <link rel="icon" href="./img/favicon/favicon.ico">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="./styles.css?v=2" />
+  <meta name="description" content="MusAudio — Production-grade PWA audio player with Atmos and advanced decoding." />
+  <style>
+    /* Smooth rotating backgrounds */
+    #welcomeOverlay{
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .bg-layer{
+      position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1200ms ease;
+      will-change: opacity, background-image;
+      filter: saturate(1.05) contrast(1.05);
+    }
+    .bg-layer.visible{ opacity: 1; }
+  </style>
+  <!-- React importmap removed -->
+</head>
+<body>
+  <header class="app-header" aria-label="MusAudio header">
+    <button id="userPhotoBtn" class="user-photo-btn" aria-label="Set user photo">
+      <img id="userPhoto" src="./img/Musaudio.png" alt="User photo" />
+    </button>
+    <button id="loginBtn" class="btn" hidden aria-label="Login with Clerk">Login</button>
+    <div class="brand" id="brandTitle"></div>
+    <button id="settingsBtn" class="icon-btn" aria-haspopup="dialog" aria-controls="settingsPanel" aria-label="Open settings">
+      <span class="icon-settings" aria-hidden="true"></span>
+    </button>
+  </header>
+
+  <main>
+    <section id="welcomeOverlay" class="welcome-overlay" aria-hidden="true"></section>
+
+    <section id="glassContainer" class="glass-container" aria-label="Library and Player">
+      <div class="panel library" aria-label="Song Library">
+        <div class="library-header">
+          <input id="searchInput" type="search" placeholder="Search songs or albums" aria-label="Search library" />
+          <button id="newPlaylistBtn" class="btn" hidden aria-label="Create new playlist">New Playlist</button>
+          <button id="pickWorkspaceBtn" class="btn" aria-label="Choose 'apple folders' directory">Choose Library</button>
+          <button id="libBackBtn" class="btn" hidden aria-label="Back to previous">Back</button>
+          <div class="library-toggle" role="tablist" aria-label="Library tabs">
+            <button id="libToggleLibrary" class="dot-toggle active" role="tab" aria-selected="true" title="Library"></button>
+            <button id="libTogglePlaylists" class="dot-toggle" role="tab" aria-selected="false" title="Playlists"></button>
+          </div>
+        </div>
+        <div id="libraryDetail" class="library-detail" hidden aria-live="polite"></div>
+        <div id="libraryList" class="library-list" role="list" aria-live="polite" tabindex="0"></div>
+      </div>
+      <div class="divider" aria-hidden="true"></div>
+      <div class="panel player" aria-label="Player">
+        <div class="artwork" id="artworkContainer" aria-label="Album art area">
+          <video id="artworkVideo" class="artwork-media" muted loop playsinline></video>
+          <img id="artworkImage" class="artwork-media" alt="Album cover" />
+          <button id="atmosBtn" class="atmos-btn" aria-label="Dolby Atmos">
+            <span class="atmos-logo" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div class="mode-row" aria-live="polite">
+          <span id="modeBadge" class="codec-badge" title="Playback mode"></span>
+        </div>
+
+        <div class="track-meta" aria-live="polite">
+          <div id="trackTitle" class="track-title">—</div>
+          <div id="trackArtist" class="track-artist">—</div>
+        </div>
+
+        <div class="controls" role="group" aria-label="Playback controls">
+          <button id="prevBtn" class="icon-btn" aria-label="Previous track"><span class="icon-prev"></span></button>
+          <button id="playPauseBtn" class="icon-btn primary" aria-label="Play/Pause"><span class="icon-play"></span></button>
+          <button id="nextBtn" class="icon-btn" aria-label="Next track"><span class="icon-next"></span></button>
+          <button id="shuffleBtn" class="icon-btn" aria-pressed="false" aria-label="Shuffle"><span class="icon-shuffle"></span></button>
+          <button id="repeatBtn" class="icon-btn" aria-pressed="false" aria-label="Repeat"><span class="icon-repeat"></span></button>
+          <button id="queueBtn" class="icon-btn" aria-label="Open queue"><span class="icon-queue"></span></button>
+        </div>
+
+        <div class="seek">
+          <span id="currentTime" class="time" aria-live="off">0:00</span>
+          <input id="seekBar" type="range" min="0" max="1" step="0.001" value="0" aria-label="Seek" />
+          <span id="duration" class="time" aria-live="off">0:00</span>
+        </div>
+
+        <div class="volume">
+          <span class="icon-volume" aria-hidden="true"></span>
+          <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="0.9" aria-label="Volume" />
+        </div>
+
+        <div id="queuePanel" class="queue" role="listbox" aria-label="Play queue" aria-expanded="false"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settingsPanel" class="settings" aria-label="Settings">
+    <header class="settings-header">
+      <h2>Settings</h2>
+      <button id="closeSettingsBtn" class="icon-btn" aria-label="Close settings"><span class="icon-close"></span></button>
+    </header>
+
+    <section class="settings-section">
+      <h3>Web Atmos</h3>
+      <p>Analyze room geometry via camera and enable surround rendering modes.</p>
+      <div class="row">
+        <label><input id="roomAnalysisToggle" type="checkbox" /> Enable Room Analysis</label>
+      </div>
+      <div class="row">
+        <button id="analyzeRoomBtn" class="btn" disabled>Analyze Room</button>
+        <output id="atmosModeOut" aria-live="polite">Not analyzed</output>
+      </div>
+      <div class="row">
+        <label><input id="virtualizeToggle" type="checkbox" checked /> Enable Web Atmos Virtualization</label>
+      </div>
+      <div class="row">
+        <output id="layoutOut" aria-live="polite">Layout: unknown</output>
+      </div>
+      <div class="row">
+        <div id="meters" class="meters" aria-label="Per-channel levels" aria-live="off"></div>
+      </div>
+      <video id="roomCam" class="hidden" playsinline muted></video>
+      <canvas id="roomCanvas" class="hidden" aria-hidden="true"></canvas>
+    </section>
+
+    <section class="settings-section">
+      <h3>Noise Cancellation</h3>
+      <div class="row">
+        <label><input type="radio" name="ncMode" value="off" checked /> Off</label>
+        <label><input type="radio" name="ncMode" value="transparency" /> Transparency</label>
+        <label><input type="radio" name="ncMode" value="full" /> Full NC</label>
+      </div>
+      <div class="row">
+        <button id="enableHeadphoneDetectBtn" class="btn">Enable Headphone Detection</button>
+        <output id="hpStatusOut" aria-live="polite">Headphones: Unknown</output>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h3>DJ Mixer</h3>
+      <div class="row">
+        <label><input id="djAutomixToggle" type="checkbox" /> Enable DJ Automix (crossfade)</label>
+      </div>
+      <p class="muted">Smoothly crossfades between tracks. Beat-aware transitions coming soon.</p>
+    </section>
+
+    <section class="settings-section">
+      <h3>Design Language</h3>
+      <div id="designDropdown" class="dropdown" data-value="liquid">
+        <button id="designDropdownBtn" class="dropdown-trigger icon-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="designDropdownList">
+          <span class="dropdown-label">Liquid Glass</span>
+          <span class="dropdown-caret" aria-hidden="true"></span>
+        </button>
+        <ul id="designDropdownList" class="dropdown-list" role="listbox" tabindex="-1" aria-label="Design language">
+          <li role="option" data-value="liquid" aria-selected="true">Liquid Glass</li>
+          <li role="option" data-value="m3" aria-selected="false">Material 3</li>
+        </ul>
+      </div>
+    </section>
+  </dialog>
+
+  <!-- New Playlist dialog -->
+  <dialog id="playlistDialog" class="modal" aria-label="Create Playlist">
+    <header class="modal-header">
+      <h3>Create Playlist</h3>
+      <button id="closePlaylistDlgBtn" class="icon-btn" aria-label="Close"><span class="icon-close"></span></button>
+    </header>
+    <div class="modal-body">
+      <div class="row" style="gap:12px; align-items:flex-start">
+        <div class="cover-uploader" style="width:110px; min-height:110px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); display:grid; place-items:center">
+          <video id="plCoverVideo" style="display:none; width:100%; height:100%; object-fit:cover" muted loop playsinline></video>
+          <img id="plCoverImage" style="display:none; width:100%; height:100%; object-fit:cover" alt="Playlist cover" />
+          <span id="plCoverPlaceholder" style="opacity:0.7">Cover</span>
+        </div>
+        <div style="flex:1; min-width:0">
+          <div class="row" style="gap:8px; align-items:center">
+            <label for="plName" style="min-width:90px">Name</label>
+            <input id="plName" type="text" placeholder="My Playlist" style="flex:1" />
+          </div>
+          <div class="row" style="gap:8px; align-items:center; margin-top:8px">
+            <label class="switch"><input id="plCollabToggle" type="checkbox" /> <span>Collaborative</span></label>
+          </div>
+          <div id="plCollabRow" class="row" style="gap:8px; align-items:center; margin-top:8px; display:none">
+            <label for="plCollabSearch" style="min-width:90px">Invite</label>
+            <input id="plCollabSearch" type="search" placeholder="Search users" style="flex:1" />
+            <div id="plCollabSuggest" class="dropdown-list" role="listbox" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px; gap:8px">
+        <input id="plCoverFile" type="file" accept="image/png,image/jpeg,image/jpg,image/gif,video/mp4" />
+        <span class="muted">PNG/JPG/GIF or short MP4</span>
+      </div>
+      <div style="margin-top:12px">
+        <h4 style="margin:4px 0">Add songs</h4>
+        <div id="plSongPicker" class="playlist-song-picker" role="listbox" aria-label="Song selector" style="max-height:40vh; overflow:auto; border-radius:8px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.04)"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end; gap:8px; margin-top:12px">
+        <button id="cancelPlaylistBtn" class="btn">Cancel</button>
+        <button id="donePlaylistBtn" class="btn primary">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Room Calibration modal -->
+  <dialog id="roomCalibModal" class="modal" aria-label="Room Calibration">
+    <header class="modal-header">
+      <h3>Room Calibration</h3>
+      <button id="closeRoomCalibBtn" class="icon-btn" aria-label="Close"><span class="icon-close"></span></button>
+    </header>
+    <div class="modal-body">
+      <p id="roomCalibMsg">We'll guide you through a short camera-based calibration. Make sure your background is not blurry.</p>
+      <div id="roomCalibVideoWrap" style="width:100%;max-height:45vh;overflow:hidden;border-radius:8px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);margin:8px 0;padding:4px">
+        <!-- roomCam video element will be moved here during calibration -->
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div>
+          <span id="roomCalibStep">Step 1/5</span>
+          <span id="roomCalibHint" style="margin-left:8px;color:var(--muted)">Face up</span>
+        </div>
+        <span id="roomCalibBlur" title="Background clarity"></span>
+      </div>
+      <div class="row" style="justify-content:flex-end;gap:8px;margin-top:12px">
+        <button id="roomCalibCancelBtn" class="btn">Cancel</button>
+        <button id="roomCalibNextBtn" class="btn">Next</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="atmosDialog" class="modal" aria-label="Dolby Atmos Details">
+    <header class="modal-header">
+      <h3>Dolby Atmos</h3>
+      <button id="closeAtmosDialogBtn" class="icon-btn" aria-label="Close"><span class="icon-close"></span></button>
+    </header>
+    <div class="modal-body">
+      <div class="atmos-hero" aria-hidden="true"></div>
+      <p>Dolby Atmos is an immersive audio technology that places sounds all around you, creating a multidimensional soundstage. It enhances clarity and depth, making music and movies feel more lifelike.</p>
+    </div>
+  </dialog>
+
+  <!-- School selection modal (manual or fallback when location blocked) -->
+  <dialog id="schoolModal" class="modal" aria-label="Select School">
+    <header class="modal-header">
+      <h3 id="schoolModalTitle">Select Your School</h3>
+      <button id="closeSchoolModalBtn" class="icon-btn" aria-label="Close"><span class="icon-close"></span></button>
+    </header>
+    <div class="modal-body">
+      <p id="schoolModalMsg">We couldn't determine your school from your location. Please choose it manually.</p>
+      <div class="row" style="margin:10px 0 6px">
+        <label for="schoolSelect">School</label>
+        <select id="schoolSelect" style="flex:1">
+          <option value="SECA">SECA</option>
+          <option value="Edison High">Edison High</option>
+          <option value="Weber Institute">Weber Institute</option>
+          <option value="Marshall Elementary">Marshall Elementary</option>
+          <option value="SUSD">SUSD (District)</option>
+          <option value="Delta College">Delta College</option>
+          <option value="Other">Other...</option>
+        </select>
+      </div>
+      <div class="row" id="otherSchoolRow" style="display:none">
+        <label for="otherSchoolInput">Enter school name</label>
+        <input id="otherSchoolInput" type="text" placeholder="Your school" style="flex:1" />
+      </div>
+      <div class="row" style="justify-content: flex-end; gap:8px; margin-top:12px">
+        <button id="cancelSchoolBtn" class="btn" aria-label="Cancel">Cancel</button>
+        <button id="confirmSchoolBtn" class="btn" aria-label="Confirm">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ffmpeg UMD not loaded here to avoid CORS; decoder.js dynamically imports ESM -->
+  
+  <!-- GSAP for cursor animations -->
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js" crossorigin="anonymous"></script>
+  <!-- React UMD removed -->
+  <button id="installBtn" class="install-btn" hidden>Install MusAudio</button>
+  <!-- Clerk browser SDK (user-provided) -->
+  <script
+    async
+    crossorigin="anonymous"
+    data-clerk-publishable-key="pk_test_ZXhjaXRpbmctbGFtYi04NS5jbGVyay5hY2NvdW50cy5kZXYk"
+    src="https://exciting-lamb-85.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+    type="text/javascript">
+  </script>
+  <!-- jsmediatags for MP3 ID3 parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/jsmediatags@3.9.7/dist/jsmediatags.min.js" crossorigin="anonymous"></script>
+  <script type="module" src="./app.js?v=3"></script>
+  
+  <!-- Hover detection area and popup image -->
+  <div id="hoverDetectionArea" class="hover-detection-area"></div>
+  <div id="popupImageContainer" class="popup-image-container">
+    <img id="popupImage" class="popup-image" src="./img/IMG_0393.png" alt="Popup Image" />
+  </div>
+
+</body>
+</html>

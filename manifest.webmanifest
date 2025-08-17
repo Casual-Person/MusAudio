@@ -1,0 +1,15 @@
+{
+  "name": "MusAudio",
+  "short_name": "MusAudio",
+  "start_url": "/musaudio/index.html",
+  "scope": "/musaudio/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {"src": "./img/favicon/favicon-16x16.png", "sizes": "16x16", "type": "image/png"},
+    {"src": "./img/favicon/favicon-32x32.png", "sizes": "32x32", "type": "image/png"},
+    {"src": "./img/favicon/favicon.ico", "sizes": "48x48", "type": "image/x-icon"},
+    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' rx='48' fill='%230a0a0a'/%3E%3Ccircle cx='96' cy='160' r='28' fill='%23e50914'/%3E%3Crect x='156' y='44' width='24' height='112' rx='8' fill='%23fff'/%3E%3Crect x='156' y='44' width='24' height='24' rx='8' fill='%23e50914'/%3E%3C/svg%3E","sizes":"256x256","type":"image/svg+xml"}
+  ]
+}
